@@ -86,6 +86,14 @@ public class UilImageGetter implements Html.ImageGetter {
         }
     }
 
+    /** 
+     * 根据手机的分辨率从 dp 的单位 转成为 px(像素) 
+     */  
+    public  int dip2px(Context context, float dpValue) {  
+        final float scale = context.getResources().getDisplayMetrics().density;  
+        return (int) (dpValue * scale + 0.5f);  
+    } 
+    
     public void replaceImage(final Bitmap loadedImage, final URLDrawable urlDrawable) {
 
         // http://stackoverflow.com/questions/18359806/linearlayouts-width-and-height-are-zero
@@ -101,8 +109,8 @@ public class UilImageGetter implements Html.ImageGetter {
                 if (null != loadedImage) {
 
                     // 按照240dip,对px和dp做处理
-                    int loadedImageWidth = (int) Math.round(loadedImage.getWidth() * 1.5);
-                    int loadedImageheight = (int) Math.round(loadedImage.getHeight() * 1.5);
+                    int loadedImageWidth = (int) Math.round(dip2px(context, loadedImage.getWidth()));
+                    int loadedImageheight = (int) Math.round(dip2px(context, loadedImage.getHeight()) );
                     Drawable result = new BitmapDrawable(context.getResources(), loadedImage);
                     result.setBounds(0, 0, loadedImageWidth, loadedImageheight);
                     urlDrawable.setBounds(0, 0, loadedImageWidth, loadedImageheight);
