@@ -1,125 +1,54 @@
 package com.jmz.software.parsehtml;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import android.annotation.SuppressLint;
+import org.sufficientlysecure.htmltextview.HtmlTextView;
+import org.sufficientlysecure.htmltextview.images.ImageCacheManager;
+import org.sufficientlysecure.htmltextview.images.ImageCacheManager.CacheType;
+import org.sufficientlysecure.htmltextview.images.RequestManager;
+
 import android.app.Activity;
-import android.graphics.Canvas;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.os.AsyncTask;
+import android.graphics.Bitmap.CompressFormat;
 import android.os.Bundle;
-import android.text.Html;
-import android.text.Spanned;
-import android.text.Html.ImageGetter;
-import android.text.method.LinkMovementMethod;
-import android.text.method.ScrollingMovementMethod;
-import android.widget.TextView;
 
-@SuppressLint("NewApi") public class MainActivity extends Activity {
+public class MainActivity extends Activity {
 
-	private TextView textView;
-	String html = "";
-	
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
+    private HtmlTextView textView;
+    
+    private static int DISK_IMAGECACHE_SIZE = 1024*1024*10;
+    private static CompressFormat DISK_IMAGECACHE_COMPRESS_FORMAT = CompressFormat.PNG;
+    private static int DISK_IMAGECACHE_QUALITY = 100;  //PNG is lossless so quality is ignored but must be provided
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
-		html = "<p> Heading 1</p> <p> Heading 2</p> <p><a href=\"http://www.jmzsoftware.com\">"
-				+ "<img src=\"http://jmzsoftware.com/wp-content/uploads/2014/05/jmzsoftware1-e1400169340524.png\" >"
-				+ "</img></a></p>";
-        
-        textView = (TextView)this.findViewById(R.id.textView1);
-        URLImageParser p = new URLImageParser(textView);
-        Spanned htmlSpan = Html.fromHtml(html, p, null);
-        textView.setMovementMethod(new ScrollingMovementMethod());
-        textView.setMovementMethod(LinkMovementMethod.getInstance());
-        textView.setClickable(true);
-        textView.setText(htmlSpan);
+        init();
+        String  html = "<html><head><title>TextView使用HTML</title></head><body><p><strong>强调</strong></p><p><em>斜体</em></p>" 
+        + "<p><a href=\"http://www.dreamdu.com/xhtml/\">超链接HTML入门</a>学习HTML!</p><p><font color=\"#aabb00\">颜色1" 
+                + "</p><p><font color=\"#00bbaa\">颜色2</p><h1>标题1</h1><h3>标题2</h3><h6>标题3</h6><p>大于>小于<</p><p>" 
+        + "下面是网络图片</p><img src=\"https://raw.githubusercontent.com/CFutureTeam/android-image-map/master/screenshot.png\"/>"
+        + "</body></html>";
 
-	}
+        textView = (HtmlTextView) this.findViewById(R.id.textView1);
+        textView.setHtmlFromString(html);;
 
-	@SuppressWarnings("deprecation")
-	public class URLDrawable extends BitmapDrawable {
-	    protected Drawable drawable;
-
-	    @Override
-	    public void draw(Canvas canvas) {
-	        if(drawable != null) {
-	            drawable.draw(canvas);
-	        }
-	    }
-	}
-	
-	public class URLImageParser implements ImageGetter {
-	    TextView c;
-	    TextView container = textView;
-	    URLDrawable urlDrawable;
-	   
-	    public URLImageParser(TextView c) {
-	        this.c = c;
-	    }
-
-	    public Drawable getDrawable(String source) {
-	    	urlDrawable = new URLDrawable();
-	    	
-	        ImageGetterAsyncTask asyncTask = 
-	            new ImageGetterAsyncTask( urlDrawable);
-
-	        asyncTask.execute(source);
-
-	        return urlDrawable;
-	    }
-
-	    public class ImageGetterAsyncTask extends AsyncTask<String, Void, Drawable>  {
-	        URLDrawable urlDrawable;
-
-	        public ImageGetterAsyncTask(URLDrawable d) {
-	            this.urlDrawable = d;
-	        }
-
-	        @Override
-	        protected Drawable doInBackground(String... params) {
-	            String source = params[0];
-	            return fetchDrawable(source);
-	        }
-
-	        @Override
-	        protected void onPostExecute(Drawable result) {  
-
-	        	float multiplier = (float)200 / (float)result.getIntrinsicWidth();
-	            int width = (int)(result.getIntrinsicWidth() * multiplier);
-	            int height = (int)(result.getIntrinsicHeight() * multiplier);
-	            urlDrawable.setBounds(0, 0, width, height);
-	            urlDrawable.drawable = result;  
-	            URLImageParser.this.container.invalidate();
-	            URLImageParser.this.container.setHeight((URLImageParser.this.container.getHeight() 
-	            		+ result.getIntrinsicHeight()));	            
-	        }
-	        
-	        public Drawable fetchDrawable(String urlString) {
-	            try {
-	                InputStream is = fetch(urlString);
-	                Drawable drawable = Drawable.createFromStream(is, "src");
-	                drawable.setBounds(0, 0, 0 + drawable.getIntrinsicWidth(), 0 
-	                        + drawable.getIntrinsicHeight()); 
-	                return drawable;
-	            } catch (Exception e) {
-	                return null;
-	            } 
-	        }
-
-	        private InputStream fetch(String urlString) throws MalformedURLException, IOException {
-	            DefaultHttpClient httpClient = new DefaultHttpClient();
-	            HttpGet request = new HttpGet(urlString);
-	            HttpResponse response = httpClient.execute(request);
-	            return response.getEntity().getContent();
-	        }
-	    }
-	}
+    }
+    /**
+     * Intialize the request manager and the image cache 
+     */
+    private void init() {
+        RequestManager.init(this);
+        createImageCache();
+    }
+    
+    /**
+     * Create the image cache. Uses Memory Cache by default. Change to Disk for a Disk based LRU implementation.  
+     */
+    private void createImageCache(){
+        ImageCacheManager.getInstance().init(this,
+                this.getPackageCodePath()
+                , DISK_IMAGECACHE_SIZE
+                , DISK_IMAGECACHE_COMPRESS_FORMAT
+                , DISK_IMAGECACHE_QUALITY
+                , CacheType.MEMORY);
+    }
 }
